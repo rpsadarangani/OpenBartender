@@ -18,6 +18,8 @@ final class Settings: ObservableObject {
         static let hotKeyCarbonMods     = "hotKeyCarbonMods"
         static let hotKeyDisplay        = "hotKeyDisplay"
         static let hasOnboarded         = "hasOnboarded"
+        static let toggleStyle          = "toggleStyle"
+        static let dividerStyle         = "dividerStyle"
     }
 
     @Published var autoHideDelay: Int {
@@ -41,6 +43,12 @@ final class Settings: ObservableObject {
     @Published var hasOnboarded: Bool {
         didSet { d.set(hasOnboarded, forKey: Key.hasOnboarded) }
     }
+    @Published var toggleStyle: String {
+        didSet { d.set(toggleStyle, forKey: Key.toggleStyle) }
+    }
+    @Published var dividerStyle: String {
+        didSet { d.set(dividerStyle, forKey: Key.dividerStyle) }
+    }
 
     /// Backed by the login-item service rather than defaults.
     @Published var launchAtLogin: Bool {
@@ -56,6 +64,8 @@ final class Settings: ObservableObject {
             Key.hotKeyCarbonMods: Int(cmdKey | optionKey),
             Key.hotKeyDisplay: "⌥⌘B",
             Key.hasOnboarded: false,
+            Key.toggleStyle: ToggleStyle.chevronCompact.rawValue,
+            Key.dividerStyle: DividerStyle.diagonal.rawValue,
         ])
 
         autoHideDelay       = d.integer(forKey: Key.autoHideDelay)
@@ -65,6 +75,8 @@ final class Settings: ObservableObject {
         hotKeyCarbonMods    = d.integer(forKey: Key.hotKeyCarbonMods)
         hotKeyDisplay       = d.string(forKey: Key.hotKeyDisplay) ?? "⌥⌘B"
         hasOnboarded        = d.bool(forKey: Key.hasOnboarded)
+        toggleStyle         = d.string(forKey: Key.toggleStyle) ?? ToggleStyle.chevronCompact.rawValue
+        dividerStyle        = d.string(forKey: Key.dividerStyle) ?? DividerStyle.diagonal.rawValue
         launchAtLogin       = (SMAppService.mainApp.status == .enabled)
     }
 

@@ -61,7 +61,6 @@ final class MenuBarController: NSObject {
         toggleItem.autosaveName     = "com.openbartender.toggle"
 
         if let b = primaryDivider.button {
-            b.image = symbol("line.diagonal", "OpenBartender divider")
             attach(b)
             b.toolTip = "Cmd-drag icons to the LEFT of this divider to manage them"
         }
@@ -76,11 +75,11 @@ final class MenuBarController: NSObject {
             let item = statusBar.statusItem(withLength: expandedWidth)
             item.autosaveName = "com.openbartender.divider.alwaysHidden"
             if let b = item.button {
-                b.image = symbol("ellipsis", "OpenBartender always-hidden divider")
                 attach(b)
-                b.toolTip = "Icons LEFT of this dotted divider are always hidden until revealed"
+                b.toolTip = "Icons LEFT of this divider are always hidden until revealed"
             }
             alwaysHiddenDivider = item
+            applyIcons()
         } else if !settings.alwaysHiddenEnabled, let item = alwaysHiddenDivider {
             statusBar.removeStatusItem(item)
             alwaysHiddenDivider = nil
@@ -99,11 +98,21 @@ final class MenuBarController: NSObject {
     private func applyState() {
         primaryDivider.length = isCollapsed ? collapsedWidth : expandedWidth
         alwaysHiddenDivider?.length = alwaysHiddenRevealed ? expandedWidth : collapsedWidth
-
-        let name = isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
-        toggleItem.button?.image = symbol(name, "Toggle menu bar icons")
-
+        applyIcons()
         isCollapsed ? cancelAutoHide() : scheduleAutoHideIfNeeded()
+    }
+
+    /// Refresh the menu-bar glyphs from the user's chosen styles.
+    private func applyIcons() {
+        let toggle = ToggleStyle(rawValue: settings.toggleStyle) ?? .chevronCompact
+        let divider = DividerStyle(rawValue: settings.dividerStyle) ?? .diagonal
+
+        toggleItem.button?.image =
+            symbol(toggle.symbolName(collapsed: isCollapsed), "Toggle menu bar icons")
+        primaryDivider.button?.image =
+            symbol(divider.symbolName, "OpenBartender divider")
+        alwaysHiddenDivider?.button?.image =
+            symbol(divider.alwaysHiddenSymbolName, "OpenBartender always-hidden divider")
     }
 
     func toggleCollapsed() {
@@ -161,6 +170,15 @@ final class MenuBarController: NSObject {
         .dropFirst()
         .receive(on: RunLoop.main)
         .sink { [weak self] in self?.applyHotKey() }
+        .store(in: &cancellables)
+
+        Publishers.Merge(
+            settings.$toggleStyle.map { _ in () },
+            settings.$dividerStyle.map { _ in () }
+        )
+        .dropFirst()
+        .receive(on: RunLoop.main)
+        .sink { [weak self] in self?.applyIcons() }
         .store(in: &cancellables)
     }
 

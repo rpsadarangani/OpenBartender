@@ -5,6 +5,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.1]
+### Added
+- Appearance preferences: choose the menu-bar **toggle icon** (chevron, arrow,
+  triangle, eye, half-circle) and **divider icon** (slash, dots, dot, dash,
+  bars). Changes apply to the menu bar live.
+
 ## [0.2.0]
 ### Added
 - Global keyboard shortcut to toggle icons (default `⌥⌘B`), via Carbon — no

@@ -17,6 +17,32 @@ struct PreferencesView: View {
                 }
             }
 
+            Section("Appearance") {
+                Picker("Toggle icon", selection: $settings.toggleStyle) {
+                    ForEach(ToggleStyle.allCases) { style in
+                        Label {
+                            Text(style.title)
+                        } icon: {
+                            Image(systemName: style.symbolName(collapsed: false))
+                        }
+                        .tag(style.rawValue)
+                    }
+                }
+                Picker("Divider icon", selection: $settings.dividerStyle) {
+                    ForEach(DividerStyle.allCases) { style in
+                        Label {
+                            Text(style.title)
+                        } icon: {
+                            Image(systemName: style.symbolName)
+                        }
+                        .tag(style.rawValue)
+                    }
+                }
+                Text("Changes apply to the menu bar immediately.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Always-Hidden Zone") {
                 Toggle("Enable a second, always-hidden zone", isOn: $settings.alwaysHiddenEnabled)
                 Text("Adds a dotted divider (⋯). Icons to its left stay hidden even when you reveal the main zone — surface them only on demand.")
@@ -36,6 +62,6 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 420)
+        .frame(width: 460, height: 540)
     }
 }
