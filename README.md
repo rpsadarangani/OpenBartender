@@ -56,8 +56,8 @@ Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
 A full Xcode install is **not** required.
 
 ```bash
-git clone https://github.com/<you>/openbartender.git
-cd openbartender
+git clone https://github.com/rpsadarangani/OpenBartender.git
+cd OpenBartender
 make run                        # builds OpenBartender.app and launches it
 # or: ./scripts/build-app.sh && cp -r OpenBartender.app /Applications/
 ```

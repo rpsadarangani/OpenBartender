@@ -11,8 +11,8 @@ Thanks for your interest in improving OpenBartender! 🎉
 ## Development loop
 
 ```bash
-git clone https://github.com/<you>/openbartender.git
-cd openbartender
+git clone https://github.com/rpsadarangani/OpenBartender.git
+cd OpenBartender
 
 make debug     # compile
 make run       # build the .app and launch it
