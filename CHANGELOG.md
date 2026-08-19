@@ -5,6 +5,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0]
+### Added
+- **Reveal on hover**: when icons are hidden, move the pointer to the menu bar
+  to peek at them; they re-hide when you leave. Uses pointer polling, so still
+  no Accessibility permission.
+- **Custom toggle icon**: pick "Custom (emoji / image)" in Appearance to use any
+  emoji/text, or choose your own image (scaled to menu-bar height).
+
 ## [0.2.1]
 ### Added
 - Appearance preferences: choose the menu-bar **toggle icon** (chevron, arrow,

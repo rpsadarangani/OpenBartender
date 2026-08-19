@@ -11,7 +11,9 @@ always need and reveal them on demand. A free, Bartender-style utility.
   "always-hidden" zone you reveal only on demand.
 - ⚙️ **Preferences window** — launch-at-login, auto-hide delay, hotkey recorder.
 - 🎨 **Customizable icons** — pick the toggle and divider glyphs (chevron, arrow,
-  eye, dots…); changes apply to the menu bar live.
+  eye, dots…), or use your own emoji/image; changes apply live.
+- 👆 **Reveal on hover** — peek at hidden icons by moving the pointer to the
+  menu bar; they re-hide when you leave.
 - 👋 **First-run onboarding** so the ⌘-drag step is never a surprise.
 - 🧰 **No Xcode required to build** — just the Command Line Tools + SwiftPM.
 - 📜 **MIT licensed.**

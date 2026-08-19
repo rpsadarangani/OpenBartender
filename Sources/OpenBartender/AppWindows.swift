@@ -13,7 +13,7 @@ final class AppWindows: NSObject, NSWindowDelegate {
     func showPreferences() {
         if preferences == nil {
             preferences = makeWindow(title: "OpenBartender Preferences",
-                                     size: NSSize(width: 460, height: 540),
+                                     size: NSSize(width: 460, height: 620),
                                      content: PreferencesView())
         }
         bringToFront(preferences)

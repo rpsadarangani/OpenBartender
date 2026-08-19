@@ -30,6 +30,12 @@ final class MenuBarController: NSObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var autoHideTimer: Timer?
+    private var hoverTimer: Timer?
+
+    /// Transiently revealing the hidden zone because the pointer is in the menu bar.
+    private var hoverPeeking = false {
+        didSet { if oldValue != hoverPeeking { applyState() } }
+    }
 
     /// Primary "hidden" zone collapsed?
     private var isCollapsed = true {
@@ -52,6 +58,7 @@ final class MenuBarController: NSObject {
         wireHotKey()
         observeSettings()
         applyState()
+        updateHoverMonitoring()
     }
 
     // MARK: - Item setup
@@ -96,7 +103,10 @@ final class MenuBarController: NSObject {
     // MARK: - State
 
     private func applyState() {
-        primaryDivider.length = isCollapsed ? collapsedWidth : expandedWidth
+        // A hover-peek temporarily expands the primary divider without touching
+        // the persistent collapsed state.
+        let showHidden = !isCollapsed || hoverPeeking
+        primaryDivider.length = showHidden ? expandedWidth : collapsedWidth
         alwaysHiddenDivider?.length = alwaysHiddenRevealed ? expandedWidth : collapsedWidth
         applyIcons()
         isCollapsed ? cancelAutoHide() : scheduleAutoHideIfNeeded()
@@ -107,12 +117,37 @@ final class MenuBarController: NSObject {
         let toggle = ToggleStyle(rawValue: settings.toggleStyle) ?? .chevronCompact
         let divider = DividerStyle(rawValue: settings.dividerStyle) ?? .diagonal
 
-        toggleItem.button?.image =
-            symbol(toggle.symbolName(collapsed: isCollapsed), "Toggle menu bar icons")
+        if let b = toggleItem.button {
+            if toggle == .custom {
+                applyCustomToggle(to: b)
+            } else {
+                b.title = ""
+                b.image = symbol(toggle.symbolName(collapsed: isCollapsed), "Toggle menu bar icons")
+            }
+        }
         primaryDivider.button?.image =
             symbol(divider.symbolName, "OpenBartender divider")
         alwaysHiddenDivider?.button?.image =
             symbol(divider.alwaysHiddenSymbolName, "OpenBartender always-hidden divider")
+    }
+
+    /// Render the toggle as a user-supplied image or emoji/text.
+    private func applyCustomToggle(to button: NSStatusBarButton) {
+        let path = settings.customToggleImage
+        if !path.isEmpty, let image = NSImage(contentsOfFile: path) {
+            let height: CGFloat = 18
+            let ratio = image.size.width / max(image.size.height, 1)
+            image.size = NSSize(width: height * ratio, height: height)
+            image.isTemplate = false // preserve the user's colours
+            button.image = image
+            button.title = ""
+        } else if !settings.customToggleText.isEmpty {
+            button.image = nil
+            button.title = settings.customToggleText
+        } else {
+            button.title = ""
+            button.image = symbol("chevron.compact.left", "Toggle menu bar icons")
+        }
     }
 
     func toggleCollapsed() {
@@ -140,6 +175,38 @@ final class MenuBarController: NSObject {
     private func cancelAutoHide() {
         autoHideTimer?.invalidate()
         autoHideTimer = nil
+    }
+
+    // MARK: - Show on hover
+
+    private func updateHoverMonitoring() {
+        if settings.showOnHover {
+            guard hoverTimer == nil else { return }
+            // Poll the pointer location — no event monitor, so no permission needed.
+            hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+                self?.pollHover()
+            }
+        } else {
+            hoverTimer?.invalidate()
+            hoverTimer = nil
+            hoverPeeking = false
+        }
+    }
+
+    private func pollHover() {
+        // Only peek when the user currently has the zone collapsed.
+        guard settings.showOnHover, isCollapsed else {
+            hoverPeeking = false
+            return
+        }
+        let loc = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(loc, $0.frame, false) }) else {
+            hoverPeeking = false
+            return
+        }
+        var menuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
+        if menuBarHeight <= 0 { menuBarHeight = 24 } // auto-hidden menu bar fallback
+        hoverPeeking = loc.y >= screen.frame.maxY - menuBarHeight
     }
 
     // MARK: - Hotkey / settings observation
@@ -172,14 +239,22 @@ final class MenuBarController: NSObject {
         .sink { [weak self] in self?.applyHotKey() }
         .store(in: &cancellables)
 
-        Publishers.Merge(
+        Publishers.MergeMany(
             settings.$toggleStyle.map { _ in () },
-            settings.$dividerStyle.map { _ in () }
+            settings.$dividerStyle.map { _ in () },
+            settings.$customToggleText.map { _ in () },
+            settings.$customToggleImage.map { _ in () }
         )
         .dropFirst()
         .receive(on: RunLoop.main)
         .sink { [weak self] in self?.applyIcons() }
         .store(in: &cancellables)
+
+        settings.$showOnHover
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateHoverMonitoring() }
+            .store(in: &cancellables)
     }
 
     // MARK: - Clicks & menu

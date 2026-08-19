@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PreferencesView: View {
     @ObservedObject private var settings = Settings.shared
@@ -15,6 +16,11 @@ struct PreferencesView: View {
                 Picker("Auto-hide after", selection: $settings.autoHideDelay) {
                     ForEach(delayOptions, id: \.1) { Text($0.0).tag($0.1) }
                 }
+
+                Toggle("Reveal on hover", isOn: $settings.showOnHover)
+                Text("When hidden, move the pointer to the menu bar to peek at your icons; they re-hide when you leave.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Appearance") {
@@ -38,6 +44,26 @@ struct PreferencesView: View {
                         .tag(style.rawValue)
                     }
                 }
+                if settings.toggleStyle == ToggleStyle.custom.rawValue {
+                    TextField("Emoji or text", text: $settings.customToggleText, prompt: Text("e.g. 🍸"))
+                    HStack {
+                        Button("Choose Image…", action: chooseImage)
+                        if !settings.customToggleImage.isEmpty {
+                            Button("Remove Image") { settings.clearCustomToggleImage() }
+                        }
+                        Spacer()
+                        if !settings.customToggleImage.isEmpty {
+                            Text((settings.customToggleImage as NSString).lastPathComponent)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                        }
+                    }
+                    Text("An image takes priority over text and is scaled to menu-bar height.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text("Changes apply to the menu bar immediately.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -62,6 +88,18 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 540)
+        .frame(width: 460, height: 620)
+    }
+
+    private func chooseImage() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.png, .jpeg, .tiff, .gif, .image]
+        panel.prompt = "Use Icon"
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.setCustomToggleImage(from: url)
+        }
     }
 }

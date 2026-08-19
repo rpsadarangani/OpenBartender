@@ -20,6 +20,9 @@ final class Settings: ObservableObject {
         static let hasOnboarded         = "hasOnboarded"
         static let toggleStyle          = "toggleStyle"
         static let dividerStyle         = "dividerStyle"
+        static let showOnHover          = "showOnHover"
+        static let customToggleText     = "customToggleText"
+        static let customToggleImage    = "customToggleImage"
     }
 
     @Published var autoHideDelay: Int {
@@ -49,6 +52,15 @@ final class Settings: ObservableObject {
     @Published var dividerStyle: String {
         didSet { d.set(dividerStyle, forKey: Key.dividerStyle) }
     }
+    @Published var showOnHover: Bool {
+        didSet { d.set(showOnHover, forKey: Key.showOnHover) }
+    }
+    @Published var customToggleText: String {
+        didSet { d.set(customToggleText, forKey: Key.customToggleText) }
+    }
+    @Published var customToggleImage: String {
+        didSet { d.set(customToggleImage, forKey: Key.customToggleImage) }
+    }
 
     /// Backed by the login-item service rather than defaults.
     @Published var launchAtLogin: Bool {
@@ -66,6 +78,9 @@ final class Settings: ObservableObject {
             Key.hasOnboarded: false,
             Key.toggleStyle: ToggleStyle.chevronCompact.rawValue,
             Key.dividerStyle: DividerStyle.diagonal.rawValue,
+            Key.showOnHover: false,
+            Key.customToggleText: "",
+            Key.customToggleImage: "",
         ])
 
         autoHideDelay       = d.integer(forKey: Key.autoHideDelay)
@@ -77,6 +92,9 @@ final class Settings: ObservableObject {
         hasOnboarded        = d.bool(forKey: Key.hasOnboarded)
         toggleStyle         = d.string(forKey: Key.toggleStyle) ?? ToggleStyle.chevronCompact.rawValue
         dividerStyle        = d.string(forKey: Key.dividerStyle) ?? DividerStyle.diagonal.rawValue
+        showOnHover         = d.bool(forKey: Key.showOnHover)
+        customToggleText    = d.string(forKey: Key.customToggleText) ?? ""
+        customToggleImage   = d.string(forKey: Key.customToggleImage) ?? ""
         launchAtLogin       = (SMAppService.mainApp.status == .enabled)
     }
 
@@ -90,6 +108,35 @@ final class Settings: ObservableObject {
         } catch {
             NSLog("OpenBartender: launch-at-login failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Custom toggle image
+
+    private var supportDir: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("OpenBartender", isDirectory: true)
+    }
+
+    /// Copy a user-picked image into Application Support and remember its path.
+    func setCustomToggleImage(from url: URL) {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: supportDir, withIntermediateDirectories: true)
+        let ext = url.pathExtension.isEmpty ? "png" : url.pathExtension
+        let dest = supportDir.appendingPathComponent("toggle-icon.\(ext)")
+        try? fm.removeItem(at: dest)
+        do {
+            try fm.copyItem(at: url, to: dest)
+            customToggleImage = dest.path
+        } catch {
+            NSLog("OpenBartender: could not import icon: \(error.localizedDescription)")
+        }
+    }
+
+    func clearCustomToggleImage() {
+        if !customToggleImage.isEmpty {
+            try? FileManager.default.removeItem(atPath: customToggleImage)
+        }
+        customToggleImage = ""
     }
 
     // MARK: - Hotkey helpers

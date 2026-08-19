@@ -9,6 +9,7 @@ enum ToggleStyle: String, CaseIterable, Identifiable {
     case triangle
     case eye
     case circle
+    case custom
 
     var id: String { rawValue }
 
@@ -20,9 +21,12 @@ enum ToggleStyle: String, CaseIterable, Identifiable {
         case .triangle:       return "Triangle"
         case .eye:            return "Eye"
         case .circle:         return "Half circle"
+        case .custom:         return "Custom (emoji / image)"
         }
     }
 
+    /// SF Symbol name for the built-in styles. `.custom` falls back to a chevron
+    /// (used only for previews / when no emoji or image is set).
     func symbolName(collapsed: Bool) -> String {
         switch self {
         case .chevronCompact: return collapsed ? "chevron.compact.left" : "chevron.compact.right"
@@ -31,6 +35,7 @@ enum ToggleStyle: String, CaseIterable, Identifiable {
         case .triangle:       return collapsed ? "arrowtriangle.left.fill" : "arrowtriangle.right.fill"
         case .eye:            return collapsed ? "eye.slash" : "eye"
         case .circle:         return collapsed ? "circle.lefthalf.filled" : "circle.righthalf.filled"
+        case .custom:         return "star"
         }
     }
 }
