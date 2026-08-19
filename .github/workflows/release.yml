@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app bundle
+        run: ./scripts/build-app.sh release
+
+      - name: Package .zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="dev"
+          ZIP="OpenBartender-${VERSION}.zip"
+          # ditto preserves the bundle + code signature better than `zip`.
+          ditto -c -k --sequesterRsrc --keepParent OpenBartender.app "$ZIP"
+          shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.ZIP }}
+            ${{ env.ZIP }}.sha256
+          generate_release_notes: true
+          body: |
+            ### OpenBartender ${{ github.ref_name }}
+
+            Download `OpenBartender-*.zip`, unzip, and move **OpenBartender.app** to `/Applications`.
+
+            **First launch (unsigned build):** right-click the app → **Open** → **Open**,
+            or run `xattr -dr com.apple.quarantine /Applications/OpenBartender.app`.

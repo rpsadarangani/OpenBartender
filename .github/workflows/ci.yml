@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build (release)
+        run: swift build -c release
+
+      - name: Assemble app bundle
+        run: ./scripts/build-app.sh release
+
+      - name: Verify bundle
+        run: |
+          test -x OpenBartender.app/Contents/MacOS/OpenBartender
+          test -f OpenBartender.app/Contents/Info.plist
+          codesign -dv OpenBartender.app 2>&1 | head -3

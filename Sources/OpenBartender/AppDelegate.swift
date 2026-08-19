@@ -1,0 +1,13 @@
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var controller: MenuBarController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        controller = MenuBarController()
+
+        if !Settings.shared.hasOnboarded {
+            AppWindows.shared.showOnboarding()
+        }
+    }
+}
