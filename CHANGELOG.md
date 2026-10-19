@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+
+## [0.3.1]
 ### Fixed
 - **macOS 26+**: icons no longer hid. macOS 26 moved menu bar layout into
   Control Center, where a divider wider than the space available overlaps its
