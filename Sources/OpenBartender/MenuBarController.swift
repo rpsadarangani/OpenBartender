@@ -16,6 +16,10 @@ import Combine
 ///   • Reveal all     sepB normal, sepA normal   → everything visible
 ///
 /// No Accessibility permission required — we only resize our own status items.
+///
+/// On macOS 26+ a divider only hides icons while it still fits on the bar (see
+/// `DividerFitter`), so there we measure the widest length that works instead
+/// of using a fixed huge width.
 final class MenuBarController: NSObject {
 
     private let statusBar = NSStatusBar.system
@@ -27,6 +31,13 @@ final class MenuBarController: NSObject {
 
     private let expandedWidth: CGFloat = 22
     private let collapsedWidth: CGFloat = 10_000
+
+    /// Whether to size dividers with `DividerFitter` (macOS 26+).
+    private let fitsDividers = ProcessInfo.processInfo.isOperatingSystemAtLeast(
+        OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0))
+    private lazy var fitter = DividerFitter(expandedWidth: expandedWidth)
+    /// Re-checks collapsed dividers, since other apps' icons come and go.
+    private var verifyTimer: Timer?
 
     private var cancellables = Set<AnyCancellable>()
     private var autoHideTimer: Timer?
@@ -57,6 +68,7 @@ final class MenuBarController: NSObject {
         rebuildAlwaysHiddenDivider()
         wireHotKey()
         observeSettings()
+        observeLayoutChanges()
         applyState()
         updateHoverMonitoring()
     }
@@ -106,8 +118,16 @@ final class MenuBarController: NSObject {
         // A hover-peek temporarily expands the primary divider without touching
         // the persistent collapsed state.
         let showHidden = !isCollapsed || hoverPeeking
-        primaryDivider.length = showHidden ? expandedWidth : collapsedWidth
-        alwaysHiddenDivider?.length = alwaysHiddenRevealed ? expandedWidth : collapsedWidth
+        if fitsDividers {
+            setHiding(primaryDivider, !showHidden)
+            // Collapsed already hides the deep zone; keep it at normal width
+            // so its baseline stays measurable.
+            if let item = alwaysHiddenDivider { setHiding(item, showHidden && !alwaysHiddenRevealed) }
+            updateVerification()
+        } else {
+            primaryDivider.length = showHidden ? expandedWidth : collapsedWidth
+            alwaysHiddenDivider?.length = alwaysHiddenRevealed ? expandedWidth : collapsedWidth
+        }
         applyIcons()
         isCollapsed ? cancelAutoHide() : scheduleAutoHideIfNeeded()
     }
@@ -125,9 +145,13 @@ final class MenuBarController: NSObject {
                 b.image = symbol(toggle.symbolName(collapsed: isCollapsed), "Toggle menu bar icons")
             }
         }
-        primaryDivider.button?.image =
+        // On macOS 26+ a collapsed divider stays on the bar as a wide blank
+        // item, so drop its glyph rather than leave it floating mid-bar.
+        let primaryHiding = fitsDividers && isCollapsed && !hoverPeeking
+        primaryDivider.button?.image = primaryHiding ? nil :
             symbol(divider.symbolName, "OpenBartender divider")
-        alwaysHiddenDivider?.button?.image =
+        let deepHiding = fitsDividers && !(isCollapsed && !hoverPeeking) && !alwaysHiddenRevealed
+        alwaysHiddenDivider?.button?.image = deepHiding ? nil :
             symbol(divider.alwaysHiddenSymbolName, "OpenBartender always-hidden divider")
     }
 
@@ -159,6 +183,70 @@ final class MenuBarController: NSObject {
         guard settings.alwaysHiddenEnabled else { return }
         if isCollapsed { isCollapsed = false }
         alwaysHiddenRevealed.toggle()
+    }
+
+    // MARK: - Fitted dividers (macOS 26+)
+
+    private func setHiding(_ item: NSStatusItem, _ hide: Bool) {
+        // Always expand, so a collapse that's still waiting to start is cancelled.
+        if !hide { fitter.expand(item) }
+        else if item.length == expandedWidth { fitter.collapse(item) }
+    }
+
+    private var collapsedDividers: [NSStatusItem] {
+        [primaryDivider, alwaysHiddenDivider].compactMap { $0 }.filter { $0.length > expandedWidth }
+    }
+
+    private func updateVerification() {
+        let showHidden = !isCollapsed || hoverPeeking
+        let anyHiding = !showHidden || (alwaysHiddenDivider != nil && !alwaysHiddenRevealed)
+        if anyHiding {
+            guard verifyTimer == nil else { return }
+            verifyTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                self.collapsedDividers.forEach { self.fitter.verify($0) }
+                self.retryPendingCollapses()
+            }
+        } else {
+            verifyTimer?.invalidate()
+            verifyTimer = nil
+        }
+    }
+
+    /// Collapses dividers that should be hiding but aren't — a fit gives up
+    /// when the bar isn't being laid out (locked screen, display asleep).
+    private func retryPendingCollapses() {
+        let showHidden = !isCollapsed || hoverPeeking
+        if !showHidden, fitter.needsRetry(primaryDivider) {
+            fitter.collapse(primaryDivider)
+        }
+        if let item = alwaysHiddenDivider, showHidden, !alwaysHiddenRevealed,
+           fitter.needsRetry(item) {
+            fitter.collapse(item)
+        }
+    }
+
+    private func observeLayoutChanges() {
+        guard fitsDividers else { return }
+        // A different display (or resolution) means a different limit.
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.collapsedDividers.forEach(self.fitter.refit)
+            }
+            .store(in: &cancellables)
+        // The front app's menus can crowd the status area.
+        NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.collapsedDividers.forEach { self.fitter.verify($0, probe: true) }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Auto-hide

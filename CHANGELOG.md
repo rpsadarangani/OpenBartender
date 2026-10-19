@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Fixed
+- **macOS 26+**: icons no longer hid. macOS 26 moved menu bar layout into
+  Control Center, where a divider wider than the space available overlaps its
+  neighbours instead of pushing them off, so the fixed 10,000 px width stopped
+  working. On macOS 26 and later the divider is now sized to the widest length
+  that still fits, measured from OpenBartender's own status items — still no
+  permissions. macOS 13–15 keep the original behaviour, unchanged.
 
 ## [0.3.0]
 ### Added

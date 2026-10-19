@@ -38,6 +38,22 @@ This is the same technique used by Hidden Bar and Dozer — proven and
 permission-free. (The optional always-hidden zone is off by default; enable it
 in Preferences.)
 
+### macOS 26 and later
+
+macOS 26 moved menu bar layout into Control Center, which changed one detail: a
+divider only pushes icons away while it still **fits** between the left edge of
+the status area and the icon to its right. Any wider and macOS gives up — the
+divider overlaps its neighbours and every icon reappears — so the classic fixed
+10,000 px stopped working.
+
+On macOS 26+ OpenBartender measures the right width instead. It grows the
+divider until its left edge reaches the end of the status area — the point
+where the pushed icons, and macOS's own **«** overflow button for them, are
+tucked away — and stops before it starts overlapping its neighbours. Only
+OpenBartender's own status items are measured, so it's still permission-free.
+The width is remembered: the first collapse (or the first after a display
+change) takes about a second, later ones well under half a second.
+
 ## Download
 
 1. Grab the latest `OpenBartender-*.zip` from the
@@ -90,6 +106,7 @@ Sources/OpenBartender/
   main.swift                        NSApplication bootstrap (.accessory / LSUIElement)
   AppDelegate.swift                 Creates the controller; shows onboarding on first run
   MenuBarController.swift           Status items, three-zone collapse logic, menu
+  DividerFitter.swift               Measures the widest divider that still hides icons (macOS 26+)
   Settings.swift                    UserDefaults-backed, observable preference store
   HotKeyManager.swift               Carbon global hotkey (no permission needed)
   HotKeyRecorder.swift              Click-to-record shortcut field (AppKit → SwiftUI)
